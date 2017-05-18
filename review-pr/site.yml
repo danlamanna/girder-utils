@@ -1,0 +1,61 @@
+- hosts: all
+  vars:
+    # girder_pr: 1730
+    girder_path: "/home/dan/projects/girder/prs/{{ girder_pr }}"
+    girder_virtualenv: "/home/dan/.virtualenvs/girder-{{ girder_pr }}"
+
+  tasks:
+    - name: download girder
+      git:
+        repo: "git@github.com:girder/girder.git"
+        dest: "{{ girder_path }}"
+
+    - name: fetch pr
+      command: git fetch origin pull/{{ girder_pr }}/head:pr-{{ girder_pr }}
+      args:
+        chdir: "{{ girder_path }}"
+
+    - name: checkout pr
+      command: git checkout pr-{{ girder_pr }}
+      args:
+        chdir: "{{ girder_path }}"
+
+    - name: pip install pip
+      pip:
+        name: "pip"
+        extra_args: "--upgrade"
+        virtualenv: "{{ girder_virtualenv }}"
+
+    - name: pip install dev reqs
+      pip:
+        requirements: "{{ girder_path }}/requirements-dev.txt"
+        virtualenv: "{{ girder_virtualenv }}"
+        chdir: "{{ girder_path }}"
+
+    - name: pip install girder/plugins
+      pip:
+        name: ".[plugins]"
+        extra_args: "--upgrade --editable"
+        virtualenv: "{{ girder_virtualenv }}"
+        chdir: "{{ girder_path }}"
+
+    - name: configure girder
+      template:
+        src: girder.local.cfg.j2
+        dest: "{{ girder_path }}/girder/conf/girder.local.cfg"
+
+    - name: build web
+      command: "{{ girder_virtualenv }}/bin/girder-install web --dev --all-plugins"
+
+    - name: make dirs
+      file:
+        path: "{{ girder_path }}/{{ item }}"
+        state: directory
+      with_items:
+        - build
+        - logs
+
+    - name: setup dir-locals
+      template:
+        src: .dir-locals.el.j2
+        dest: "{{ girder_path }}/.dir-locals.el"

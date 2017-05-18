@@ -1,0 +1,9 @@
+[global]
+server.socket_host = "0.0.0.0"
+server.socket_port = {{ range(8000, 9000) | random }}
+
+[database]
+uri = "mongodb://localhost:27017/girder_{{ girder_pr }}"
+
+[logging]
+log_root="{{ girder_path }}/logs"
